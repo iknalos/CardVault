@@ -40,6 +40,13 @@ class DisplayActivity : AppCompatActivity() {
             findViewById<View>(R.id.annCloseBtn).setOnClickListener { finish() }
             findViewById<View>(R.id.annEditBtn).setOnClickListener { openEditor() }
             findViewById<View>(R.id.speakBtn).setOnClickListener { speak(loadCard()) }
+            val toggle = findViewById<TextView>(R.id.annDetailsToggle)
+            val detailsView = findViewById<TextView>(R.id.annDetails)
+            toggle.setOnClickListener {
+                val show = detailsView.visibility != View.VISIBLE
+                detailsView.visibility = if (show) View.VISIBLE else View.GONE
+                toggle.text = if (show) "▾ Card details" else "▸ Card details"
+            }
         } else {
             setContentView(R.layout.activity_display)
             // Scanners need a bright screen: force max brightness while showing.
@@ -71,6 +78,9 @@ class DisplayActivity : AppCompatActivity() {
             window.statusBarColor = color
             findViewById<TextView>(R.id.annName).text = card.name
             findViewById<TextView>(R.id.annNotes).text = card.notes
+            val hasDetails = card.details.isNotEmpty()
+            findViewById<TextView>(R.id.annDetailsToggle).visibility = if (hasDetails) View.VISIBLE else View.GONE
+            findViewById<TextView>(R.id.annDetails).text = card.details
             if (!announced) {
                 announced = true
                 vibrate()

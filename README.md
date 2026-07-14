@@ -9,7 +9,8 @@ Store your own ID/membership card barcodes on your phone so you don't have to ca
 
 Designed to be senior-friendly: large text, big buttons, two-screen simplicity.
 
-- **NFC tap-to-identify (v1.1):** hold any NFC card or tag against the phone and CardVault shows its label in huge text and **speaks it aloud** ("This is your bus pass. Paid through March."). Unknown tags open a name-it screen. Works with ID cards, transit cards, and cheap NTAG stickers — stick them on pill bottles or appliances to make talking labels for the whole home. (Identification is by tag UID; contents of locked cards are never read.)
+- **NFC tap-to-identify (v1.1):** hold any NFC card or tag against the phone and CardVault shows its label in huge text and **speaks it aloud** ("This is your bus pass. Paid through March."). Unknown tags open a name-it screen. Works with ID cards, transit cards, and cheap NTAG stickers — stick them on pill bottles or appliances to make talking labels for the whole home.
+- **Card technical fingerprint (v1.2):** on each tap the app also records what the phone can decode from the card — technology list, ATQA/SAK, ATS/historical bytes, MIFARE type/size, and any readable NDEF or open memory — shown behind a "Card details" toggle. Identification is by tag UID; **protected cards' contents are never readable**, and the **raw RF signal can't be captured by a phone** (that needs a Proxmark3/SDR) — the app only stores what the NFC controller hands it as decoded bytes.
 - Card data is stored with **EncryptedSharedPreferences** — AES-256 encrypted with a key kept in the phone's hardware Keystore, so card numbers are unreadable even if the file is extracted
 - Optional **app lock** (fingerprint or device PIN) in the ⋮ menu, off by default
 - Scan cards with the camera (ZXing), same 13 barcode formats as the web version

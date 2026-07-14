@@ -80,6 +80,7 @@ object CardStore {
                 put("notes", c.notes)
                 put("color", c.color)
                 put("created", c.created)
+                if (c.details.isNotEmpty()) put("details", c.details)
             })
         }
         return arr.toString(2)
@@ -100,7 +101,8 @@ object CardStore {
                     format = o.optString("format").ifEmpty { "code128" },
                     notes = o.optString("notes", ""),
                     color = o.optString("color").ifEmpty { COLORS[0] },
-                    created = o.optString("created").ifEmpty { nowIso() }
+                    created = o.optString("created").ifEmpty { nowIso() },
+                    details = o.optString("details", "")
                 )
             )
         }

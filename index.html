@@ -314,7 +314,8 @@ async function openDisplay(id) {
   const card = cards.find(c => c.id === id);
   if (!card) return;
   document.getElementById('dispName').textContent = card.name;
-  document.getElementById('dispValue').textContent = card.value + (card.notes ? '\n' + card.notes : '');
+  const detailBlock = card.details ? '\n\n' + card.details : '';
+  document.getElementById('dispValue').textContent = card.value + (card.notes ? '\n' + card.notes : '') + detailBlock;
   const isTag = card.format === 'nfctag';
   document.getElementById('dispCanvasWrap').style.display = isTag ? 'none' : 'block';
   document.getElementById('dispHint').textContent = isTag
@@ -467,7 +468,7 @@ document.getElementById('importFile').onchange = async e => {
     let added = 0;
     imported.forEach(c => {
       if (c && c.value && c.format && !cards.some(x => x.value === c.value && x.format === c.format)) {
-        cards.push({ id: uid(), name: c.name || 'Imported card', value: String(c.value), format: c.format, notes: c.notes || '', color: c.color || COLORS[0], created: c.created || new Date().toISOString() });
+        cards.push({ id: uid(), name: c.name || 'Imported card', value: String(c.value), format: c.format, notes: c.notes || '', color: c.color || COLORS[0], created: c.created || new Date().toISOString(), details: c.details || '' });
         added++;
       }
     });

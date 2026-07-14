@@ -61,6 +61,30 @@
             android:lineSpacingExtra="6dp"
             android:textColor="#EEFFFFFF"
             android:textSize="26sp" />
+
+        <TextView
+            android:id="@+id/annDetailsToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:padding="10dp"
+            android:text="▸ Card details"
+            android:textColor="#CCFFFFFF"
+            android:textSize="16sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/annDetails"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="#22000000"
+            android:fontFamily="monospace"
+            android:gravity="start"
+            android:padding="14dp"
+            android:textColor="#EEFFFFFF"
+            android:textSize="13sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton

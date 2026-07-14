@@ -24,6 +24,7 @@ class EditCardActivity : AppCompatActivity() {
     private var selectedColor = CardStore.COLORS[0]
     private var isNfc = false
     private var nfcUid = ""
+    private var nfcDetails = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +44,7 @@ class EditCardActivity : AppCompatActivity() {
         if (card != null) {
             isNfc = card.format == Barcodes.NFC_FORMAT
             nfcUid = if (isNfc) card.value else ""
+            nfcDetails = card.details
             findViewById<TextView>(R.id.editTitle).text = if (isNfc) "Edit tap card" else "Edit card"
             nameField.setText(card.name)
             valueField.setText(card.value)
@@ -54,6 +56,7 @@ class EditCardActivity : AppCompatActivity() {
             val prefillFormat = intent.getStringExtra("prefill_format") ?: "code128"
             isNfc = prefillFormat == Barcodes.NFC_FORMAT
             nfcUid = if (isNfc) (intent.getStringExtra("prefill_value") ?: "") else ""
+            nfcDetails = if (isNfc) (intent.getStringExtra("prefill_details") ?: "") else ""
             valueField.setText(intent.getStringExtra("prefill_value") ?: "")
             if (!isNfc) formatSpinner.setSelection(Barcodes.bcids.indexOf(prefillFormat).coerceAtLeast(0))
             selectedColor = CardStore.COLORS[cards.size % CardStore.COLORS.size]
@@ -71,7 +74,8 @@ class EditCardActivity : AppCompatActivity() {
             formatSpinner.visibility = View.GONE
             val info = findViewById<TextView>(R.id.nfcInfo)
             info.visibility = View.VISIBLE
-            info.text = "NFC card detected ✓\nTag ID: $nfcUid\n\nFrom now on, tapping this card on the phone will show and speak whatever name you give it."
+            val detailBlock = if (nfcDetails.isNotEmpty()) "\n\nCard details:\n$nfcDetails" else ""
+            info.text = "NFC card detected ✓\nTag ID: $nfcUid\n\nFrom now on, tapping this card on the phone will show and speak whatever name you give it.$detailBlock"
         }
 
         buildColorRow()
@@ -153,7 +157,7 @@ class EditCardActivity : AppCompatActivity() {
             card.name = name; card.value = value; card.format = format
             card.notes = notes; card.color = selectedColor
         } else {
-            cards.add(Card(CardStore.newId(), name, value, format, notes, selectedColor, CardStore.nowIso()))
+            cards.add(Card(CardStore.newId(), name, value, format, notes, selectedColor, CardStore.nowIso(), nfcDetails))
         }
         CardStore.save(this, cards)
         finish()
