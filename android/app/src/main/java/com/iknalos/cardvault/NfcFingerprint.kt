@@ -79,28 +79,31 @@ object NfcFingerprint {
     }
 
     private fun readMifareClassic(mc: MifareClassic): String {
-        val out = StringBuilder()
+        // Only sample the first few sectors: we just need "open vs protected"
+        // to describe the card. Probing all 40 sectors of a fully-protected ID
+        // (the common case) is up to 120 failed radio round-trips of tap latency.
+        val sample = minOf(mc.sectorCount, 5)
         var readable = 0
-        var protectedCount = 0
         try {
             mc.connect()
-            for (s in 0 until mc.sectorCount) {
+            for (s in 0 until sample) {
                 val ok = try {
                     mc.authenticateSectorWithKeyA(s, MifareClassic.KEY_DEFAULT) ||
                         mc.authenticateSectorWithKeyA(s, MifareClassic.KEY_MIFARE_APPLICATION_DIRECTORY) ||
                         mc.authenticateSectorWithKeyA(s, MifareClassic.KEY_NFC_FORUM)
                 } catch (e: Exception) { false }
-                if (ok) readable++ else protectedCount++
+                if (ok) readable++
             }
         } catch (e: Exception) {
             return "  (could not read: card moved away)\n"
         } finally {
             try { mc.close() } catch (e: Exception) {}
         }
-        out.append("  Sectors: ").append(readable).append(" open with default keys, ")
-           .append(protectedCount).append(" protected\n")
-        if (protectedCount > 0) out.append("  This card is protected — its contents can't be read.\n")
-        return out.toString()
+        return if (readable > 0) {
+            "  Some sectors open with default keys (blank/NDEF-style card)\n"
+        } else {
+            "  Protected — its contents can't be read (only its ID is used)\n"
+        }
     }
 
     private fun readUltralight(mu: MifareUltralight): String {
