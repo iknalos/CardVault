@@ -48,10 +48,21 @@ object CardStore {
         }
     }
 
-    fun load(ctx: Context): MutableList<Card> =
-        try { fromJson(prefs(ctx).getString(CARDS_KEY, "[]") ?: "[]") } catch (e: Exception) { mutableListOf() }
+    // Canonical decrypted list, kept in memory so repeated load() calls in one
+    // tap don't each decrypt + re-parse the whole store. Callers get fresh
+    // copies, so they can mutate their list freely before calling save().
+    @Volatile
+    private var cache: List<Card>? = null
+
+    fun load(ctx: Context): MutableList<Card> {
+        cache?.let { return it.mapTo(mutableListOf()) { c -> c.copy() } }
+        val list = try { fromJson(prefs(ctx).getString(CARDS_KEY, "[]") ?: "[]") } catch (e: Exception) { mutableListOf() }
+        cache = list.map { it.copy() }
+        return list
+    }
 
     fun save(ctx: Context, cards: List<Card>) {
+        cache = cards.map { it.copy() }
         prefs(ctx).edit().putString(CARDS_KEY, toJson(cards)).apply()
     }
 

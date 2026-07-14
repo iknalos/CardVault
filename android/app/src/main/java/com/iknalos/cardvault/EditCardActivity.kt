@@ -145,11 +145,9 @@ class EditCardActivity : AppCompatActivity() {
 
         if (name.isEmpty()) { Toast.makeText(this, "Give the card a name", Toast.LENGTH_SHORT).show(); return }
         if (value.isEmpty()) { Toast.makeText(this, "Enter or scan the barcode value", Toast.LENGTH_SHORT).show(); return }
-        if (!isNfc) {
-            try { Barcodes.render(value, format) } catch (e: Exception) {
-                Toast.makeText(this, "That value can't be encoded as ${Barcodes.labelFor(format)}", Toast.LENGTH_LONG).show()
-                return
-            }
+        if (!isNfc && !Barcodes.canEncode(value, format)) {
+            Toast.makeText(this, "That value can't be encoded as ${Barcodes.labelFor(format)}", Toast.LENGTH_LONG).show()
+            return
         }
 
         val card = editing

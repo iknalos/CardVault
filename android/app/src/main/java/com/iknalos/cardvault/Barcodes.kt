@@ -69,12 +69,29 @@ object Barcodes {
         }
         val hints = mapOf(EncodeHintType.MARGIN to 2)
         val matrix = MultiFormatWriter().encode(value, fmt, w, h, hints)
-        val bmp = Bitmap.createBitmap(matrix.width, matrix.height, Bitmap.Config.RGB_565)
-        for (y in 0 until matrix.height) {
-            for (x in 0 until matrix.width) {
-                bmp.setPixel(x, y, if (matrix.get(x, y)) Color.BLACK else Color.WHITE)
+        val bw = matrix.width
+        val bh = matrix.height
+        // Fill a pixel array and blit once, rather than one JNI setPixel per pixel.
+        val pixels = IntArray(bw * bh)
+        for (y in 0 until bh) {
+            val row = y * bw
+            for (x in 0 until bw) {
+                pixels[row + x] = if (matrix.get(x, y)) Color.BLACK else Color.WHITE
             }
         }
+        val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.RGB_565)
+        bmp.setPixels(pixels, 0, bw, 0, 0, bw, bh)
         return bmp
+    }
+
+    /** True if the value can be encoded in this format, without building a bitmap. */
+    fun canEncode(value: String, bcid: String): Boolean {
+        val fmt = ZXING[bcid] ?: return false
+        return try {
+            MultiFormatWriter().encode(value, fmt, 200, 200, mapOf(EncodeHintType.MARGIN to 2))
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 }
