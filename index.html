@@ -8,8 +8,6 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<script src="vendor/bwip-js.min.js"></script>
-<script src="vendor/html5-qrcode.min.js"></script>
 <style>
   :root {
     --bg: #0f1220;
@@ -98,7 +96,7 @@
   #dispName { font-size: 1.25rem; font-weight: 700; margin-bottom: 20px; }
   #dispCanvasWrap { width: 100%; max-width: 480px; }
   #dispCanvasWrap canvas { max-width: 100%; height: auto; }
-  #dispValue { font-family: ui-monospace, monospace; font-size: .95rem; color: #555; margin-top: 16px; word-break: break-all; }
+  #dispValue { font-family: ui-monospace, monospace; font-size: .95rem; color: #555; margin-top: 16px; word-break: break-all; white-space: pre-line; }
   #dispClose {
     position: absolute; top: 16px; right: 16px; width: 44px; height: 44px;
     border-radius: 50%; border: none; background: #eee; color: #111; font-size: 1.3rem; cursor: pointer;
@@ -129,6 +127,9 @@
 <main>
   <!-- LIST VIEW -->
   <section id="listView" class="view active">
+    <div class="field" id="searchWrap" style="display:none">
+      <input id="searchBox" type="search" placeholder="Search cards…" autocomplete="off">
+    </div>
     <div id="cardList"></div>
     <div id="emptyState">
       <div class="big">🪪</div>
@@ -237,6 +238,25 @@ let editingId = null;   // null = adding new
 let selectedColor = COLORS[0];
 let scanner = null;
 let wakeLock = null;
+let searchTerm = '';
+
+// Lazy script loading — the two vendor libs are ~1.4 MB combined, so they're
+// only parsed when actually needed instead of on every app launch.
+const scriptPromises = {};
+function loadScript(src) {
+  if (!scriptPromises[src]) {
+    scriptPromises[src] = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => { delete scriptPromises[src]; reject(new Error('Failed to load ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  return scriptPromises[src];
+}
+const loadBwip = () => loadScript('vendor/bwip-js.min.js');
+const loadScannerLib = () => loadScript('vendor/html5-qrcode.min.js');
 
 function load() {
   try { cards = JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
@@ -257,7 +277,10 @@ function renderList() {
   const list = document.getElementById('cardList');
   list.innerHTML = '';
   document.getElementById('emptyState').style.display = cards.length ? 'none' : 'block';
-  cards.forEach(c => {
+  document.getElementById('searchWrap').style.display = cards.length > 5 ? 'block' : 'none';
+  const q = searchTerm.trim().toLowerCase();
+  const shown = q ? cards.filter(c => c.name.toLowerCase().includes(q) || (c.notes || '').toLowerCase().includes(q)) : cards;
+  shown.forEach(c => {
     const tile = document.createElement('div');
     tile.className = 'card-tile';
     tile.style.background = c.color || COLORS[0];
@@ -274,7 +297,8 @@ function labelFor(bcid) {
 }
 
 // ---------- Barcode rendering ----------
-function renderBarcode(canvas, card) {
+async function renderBarcode(canvas, card) {
+  await loadBwip();
   const opts = { bcid: card.format, text: card.value, scale: 3, backgroundcolor: 'FFFFFF', paddingwidth: 8, paddingheight: 8 };
   if (!SQUARE_FORMATS.includes(card.format) && card.format !== 'pdf417') {
     opts.height = 18;           // mm-ish bar height for 1D codes
@@ -291,7 +315,7 @@ async function openDisplay(id) {
   document.getElementById('dispName').textContent = card.name;
   document.getElementById('dispValue').textContent = card.value + (card.notes ? '\n' + card.notes : '');
   try {
-    renderBarcode(document.getElementById('dispCanvas'), card);
+    await renderBarcode(document.getElementById('dispCanvas'), card);
   } catch (e) {
     alert('Could not render this barcode: ' + e);
     return;
@@ -310,8 +334,9 @@ document.getElementById('dispClose').onclick = closeDisplay;
 // ---------- Scanner ----------
 async function startScanner() {
   showView('scanView');
-  scanner = new Html5Qrcode('reader');
   try {
+    await loadScannerLib();
+    scanner = new Html5Qrcode('reader');
     await scanner.start(
       { facingMode: 'environment' },
       { fps: 10, qrbox: { width: 280, height: 180 } },
@@ -363,17 +388,21 @@ function renderColorRow() {
     row.appendChild(s);
   });
 }
-function updatePreview() {
+let previewSeq = 0;
+async function updatePreview() {
   const value = document.getElementById('fValue').value.trim();
   const format = document.getElementById('fFormat').value;
   const box = document.getElementById('livePreview');
   const err = document.getElementById('previewErr');
+  const seq = ++previewSeq;
   err.textContent = '';
   if (!value) { box.style.display = 'none'; return; }
   try {
-    renderBarcode(document.getElementById('previewCanvas'), { value, format });
+    await renderBarcode(document.getElementById('previewCanvas'), { value, format });
+    if (seq !== previewSeq) return; // a newer keystroke already re-rendered
     box.style.display = 'block';
   } catch (e) {
+    if (seq !== previewSeq) return;
     box.style.display = 'none';
     err.textContent = 'Value doesn’t fit this barcode type — check the type or the digits.';
   }
@@ -381,13 +410,13 @@ function updatePreview() {
 document.getElementById('fValue').addEventListener('input', updatePreview);
 document.getElementById('fFormat').addEventListener('change', updatePreview);
 
-document.getElementById('editSave').onclick = () => {
+document.getElementById('editSave').onclick = async () => {
   const name = document.getElementById('fName').value.trim();
   const value = document.getElementById('fValue').value.trim();
   const format = document.getElementById('fFormat').value;
   if (!name) { alert('Give the card a name.'); return; }
   if (!value) { alert('Enter or scan the barcode value.'); return; }
-  try { renderBarcode(document.createElement('canvas'), { value, format }); }
+  try { await renderBarcode(document.createElement('canvas'), { value, format }); }
   catch { alert('That value can’t be encoded as ' + labelFor(format) + '. Pick a different type.'); return; }
   const notes = document.getElementById('fNotes').value.trim();
   if (editingId) {
@@ -441,9 +470,12 @@ document.getElementById('importFile').onchange = async e => {
 
 // ---------- Boot ----------
 document.getElementById('fab').onclick = startScanner;
+document.getElementById('searchBox').addEventListener('input', e => { searchTerm = e.target.value; renderList(); });
 load();
 renderList();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+// Warm up the renderer once the app is idle so opening a card is instant
+if (cards.length) (window.requestIdleCallback || setTimeout)(() => loadBwip().catch(() => {}));
 </script>
 </body>
 </html>
