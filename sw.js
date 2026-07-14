@@ -1,4 +1,4 @@
-const CACHE = 'cardvault-v4';
+const CACHE = 'cardvault-v5';
 const ASSETS = [
   './',
   './index.html',

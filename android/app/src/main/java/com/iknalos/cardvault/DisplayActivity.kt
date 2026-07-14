@@ -25,6 +25,7 @@ class DisplayActivity : AppCompatActivity() {
     private var isTapCard = false
     private var tts: TextToSpeech? = null
     private var announced = false
+    private var destroyed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,8 +109,11 @@ class DisplayActivity : AppCompatActivity() {
             existing.speak(text, TextToSpeech.QUEUE_FLUSH, null, "announce")
         } else {
             tts = TextToSpeech(this) { status ->
+                if (destroyed) return@TextToSpeech  // activity gone before init finished
                 if (status == TextToSpeech.SUCCESS) {
                     tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "announce")
+                } else {
+                    Toast.makeText(this, "Voice not available on this device", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -129,8 +133,10 @@ class DisplayActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        destroyed = true
         tts?.stop()
         tts?.shutdown()
+        tts = null
         super.onDestroy()
     }
 }

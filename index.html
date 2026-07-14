@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0f1220">
 <title>CardVault</title>
 <link rel="manifest" href="manifest.json">
@@ -43,7 +43,7 @@
     box-shadow: 0 4px 14px rgba(0,0,0,.35);
   }
   .card-tile .cname { font-size: 1.1rem; font-weight: 600; word-break: break-word; }
-  .card-tile .cformat { font-size: .72rem; opacity: .85; margin-top: 4px; letter-spacing: .5px; text-transform: uppercase; }
+  .card-tile .cformat { font-size: .9rem; opacity: .9; margin-top: 4px; letter-spacing: .5px; text-transform: uppercase; }
   .card-tile .chev { font-size: 1.3rem; opacity: .7; flex-shrink: 0; }
   #emptyState { text-align: center; color: var(--muted); padding: 60px 20px; line-height: 1.6; }
   #emptyState .big { font-size: 3rem; margin-bottom: 12px; }
@@ -102,7 +102,7 @@
     border-radius: 50%; border: none; background: #eee; color: #111; font-size: 1.3rem; cursor: pointer;
   }
   #dispEdit { position: absolute; top: 16px; left: 16px; border-radius: 12px; border: none; background: #eee; color: #111; padding: 10px 16px; font-size: .95rem; cursor: pointer; }
-  #dispHint { color: #999; font-size: .8rem; margin-top: 24px; }
+  #dispHint { color: #777; font-size: .95rem; margin-top: 24px; }
 
   /* Menu sheet */
   #menuSheet {
@@ -121,7 +121,7 @@
 
 <header>
   <h1>Card<span>Vault</span></h1>
-  <button class="iconbtn" id="menuBtn">⋯</button>
+  <button class="iconbtn" id="menuBtn" aria-label="Menu and backup options">⋯</button>
 </header>
 
 <main>
@@ -197,12 +197,12 @@
   </section>
 </main>
 
-<button id="fab">+</button>
+<button id="fab" aria-label="Add a card">+</button>
 
 <!-- FULLSCREEN BARCODE DISPLAY -->
 <div id="displayView">
   <button id="dispEdit">Edit</button>
-  <button id="dispClose">✕</button>
+  <button id="dispClose" aria-label="Close">✕</button>
   <div id="dispName"></div>
   <div id="dispCanvasWrap"><canvas id="dispCanvas"></canvas></div>
   <div id="dispValue"></div>
@@ -263,8 +263,19 @@ function load() {
   try { cards = JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
   catch { cards = []; }
 }
-function save() { localStorage.setItem(STORE_KEY, JSON.stringify(cards)); }
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(cards));
+    return true;
+  } catch (e) {
+    alert('Could not save — your phone storage may be full, or private browsing is blocking storage.\n\nUse the ⋯ menu to export a backup, then remove a few cards and try again.');
+    return false;
+  }
+}
+function uid() {
+  try { return crypto.randomUUID(); } catch (e) {}
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -281,20 +292,46 @@ function renderList() {
   document.getElementById('searchWrap').style.display = cards.length > 5 ? 'block' : 'none';
   const q = searchTerm.trim().toLowerCase();
   const shown = q ? cards.filter(c => c.name.toLowerCase().includes(q) || (c.notes || '').toLowerCase().includes(q)) : cards;
+  const frag = document.createDocumentFragment();
   shown.forEach(c => {
     const tile = document.createElement('div');
     tile.className = 'card-tile';
-    tile.style.background = c.color || COLORS[0];
-    tile.innerHTML = `<div><div class="cname"></div><div class="cformat">${labelFor(c.format)}</div></div><div class="chev">›</div>`;
-    tile.querySelector('.cname').textContent = c.name;
+    tile.style.background = safeColor(c.color);
+    // Built with textContent (not innerHTML) so card/format text can never inject markup.
+    const info = document.createElement('div');
+    const cname = document.createElement('div');
+    cname.className = 'cname';
+    cname.textContent = c.name;
+    const cformat = document.createElement('div');
+    cformat.className = 'cformat';
+    cformat.textContent = labelFor(c.format);
+    info.appendChild(cname);
+    info.appendChild(cformat);
+    const chev = document.createElement('div');
+    chev.className = 'chev';
+    chev.textContent = '›';
+    tile.appendChild(info);
+    tile.appendChild(chev);
     tile.onclick = () => openDisplay(c.id);
-    list.appendChild(tile);
+    frag.appendChild(tile);
   });
+  list.appendChild(frag);
   document.getElementById('cardCount').textContent = cards.length + ' card(s) saved';
 }
+// Label lookup by a static map — never touches the DOM, so a hostile format string
+// can't become a selector or markup.
+const FORMAT_LABELS = {
+  qrcode: 'QR Code', code128: 'Code 128', code39: 'Code 39', code93: 'Code 93',
+  ean13: 'EAN-13', ean8: 'EAN-8', upca: 'UPC-A', upce: 'UPC-E',
+  interleaved2of5: 'ITF (Interleaved 2 of 5)', rationalizedCodabar: 'Codabar',
+  pdf417: 'PDF417', azteccode: 'Aztec', datamatrix: 'Data Matrix',
+  nfctag: 'NFC tap card'
+};
 function labelFor(bcid) {
-  const opt = document.querySelector(`#fFormat option[value="${bcid}"]`);
-  return opt ? opt.textContent : bcid;
+  return FORMAT_LABELS[bcid] || 'Unknown';
+}
+function safeColor(c) {
+  return (typeof c === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(c)) ? c : COLORS[0];
 }
 
 // ---------- Barcode rendering ----------
@@ -341,10 +378,13 @@ function closeDisplay() {
 document.getElementById('dispClose').onclick = closeDisplay;
 
 // ---------- Scanner ----------
+let scanGen = 0;
 async function startScanner() {
+  const gen = ++scanGen;
   showView('scanView');
   try {
     await loadScannerLib();
+    if (gen !== scanGen) return; // user left the scan view while the library loaded
     scanner = new Html5Qrcode('reader');
     await scanner.start(
       { facingMode: 'environment' },
@@ -362,6 +402,7 @@ async function startScanner() {
   }
 }
 function stopScanner() {
+  scanGen++; // invalidate any in-flight startScanner() waiting on the library
   if (scanner) {
     const s = scanner; scanner = null;
     s.stop().then(() => s.clear()).catch(() => {});
@@ -465,15 +506,17 @@ document.getElementById('importFile').onchange = async e => {
   try {
     const imported = JSON.parse(await file.text());
     if (!Array.isArray(imported)) throw new Error('not an array');
-    let added = 0;
+    let added = 0, skipped = 0;
     imported.forEach(c => {
       if (c && c.value && c.format && !cards.some(x => x.value === c.value && x.format === c.format)) {
-        cards.push({ id: uid(), name: c.name || 'Imported card', value: String(c.value), format: c.format, notes: c.notes || '', color: c.color || COLORS[0], created: c.created || new Date().toISOString(), details: c.details || '' });
+        cards.push({ id: uid(), name: c.name || 'Imported card', value: String(c.value), format: c.format, notes: c.notes || '', color: safeColor(c.color), created: c.created || new Date().toISOString(), details: c.details || '' });
         added++;
+      } else {
+        skipped++;
       }
     });
     save(); renderList();
-    alert('Imported ' + added + ' card(s).');
+    alert('Imported ' + added + ' card(s).' + (skipped ? '\nSkipped ' + skipped + ' (already saved or incomplete).' : ''));
   } catch { alert('That file isn’t a valid CardVault backup.'); }
   e.target.value = '';
   document.getElementById('menuSheet').classList.remove('active');
