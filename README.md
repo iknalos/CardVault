@@ -1,8 +1,21 @@
 # CardVault
 
-A tiny PWA that stores your own ID/membership card barcodes on your phone so you don't have to carry the physical cards.
+Store your own ID/membership card barcodes on your phone so you don't have to carry the physical cards. Two versions in this repo:
 
-**Live app:** https://iknalos.github.io/CardVault/
+- **Web app (PWA):** https://iknalos.github.io/CardVault/ — works on any phone, install via "Add to Home Screen"
+- **Android app (Kotlin):** download `CardVault.apk` from [Releases](https://github.com/iknalos/CardVault/releases) — adds encrypted storage, optional fingerprint/PIN lock, and automatic max screen brightness when showing a barcode
+
+## Android app
+
+Designed to be senior-friendly: large text, big buttons, two-screen simplicity.
+
+- Card data is stored with **EncryptedSharedPreferences** — AES-256 encrypted with a key kept in the phone's hardware Keystore, so card numbers are unreadable even if the file is extracted
+- Optional **app lock** (fingerprint or device PIN) in the ⋮ menu, off by default
+- Scan cards with the camera (ZXing), same 13 barcode formats as the web version
+- Showing a card forces **maximum screen brightness** and keeps the screen awake
+- JSON **backup export/import** uses the same format as the web app, so cards move freely between both
+
+Source lives in [`android/`](android/); the APK is built and released automatically by GitHub Actions on every push that touches it.
 
 ## How it works
 
