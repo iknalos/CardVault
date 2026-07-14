@@ -1,0 +1,14 @@
+{
+  "name": "CardVault",
+  "short_name": "CardVault",
+  "description": "Store your ID card barcodes on your phone. All data stays on-device.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1220",
+  "theme_color": "#0f1220",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
