@@ -25,7 +25,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:padding="40dp"
-            android:text="No cards yet.\n\nTap the Add card button below, then point the camera at the barcode on your card."
+            android:text="No cards yet.\n\nTap the Add card button below and point the camera at a barcode — or hold any NFC card against the back of the phone to give it a name."
             android:textColor="#9AA1C0"
             android:textSize="20sp"
             android:lineSpacingExtra="6dp"

@@ -176,6 +176,7 @@
         <option value="pdf417">PDF417</option>
         <option value="azteccode">Aztec</option>
         <option value="datamatrix">Data Matrix</option>
+        <option value="nfctag">NFC tap card (Android app)</option>
       </select>
     </div>
     <div id="livePreview"><canvas id="previewCanvas"></canvas></div>
@@ -314,11 +315,18 @@ async function openDisplay(id) {
   if (!card) return;
   document.getElementById('dispName').textContent = card.name;
   document.getElementById('dispValue').textContent = card.value + (card.notes ? '\n' + card.notes : '');
-  try {
-    await renderBarcode(document.getElementById('dispCanvas'), card);
-  } catch (e) {
-    alert('Could not render this barcode: ' + e);
-    return;
+  const isTag = card.format === 'nfctag';
+  document.getElementById('dispCanvasWrap').style.display = isTag ? 'none' : 'block';
+  document.getElementById('dispHint').textContent = isTag
+    ? 'This is an NFC tap card — hold the physical card against your Android phone'
+    : 'Turn screen brightness up if the scanner struggles';
+  if (!isTag) {
+    try {
+      await renderBarcode(document.getElementById('dispCanvas'), card);
+    } catch (e) {
+      alert('Could not render this barcode: ' + e);
+      return;
+    }
   }
   document.getElementById('displayView').classList.add('active');
   document.getElementById('dispEdit').onclick = () => { closeDisplay(); openEdit(id); };
@@ -396,7 +404,7 @@ async function updatePreview() {
   const err = document.getElementById('previewErr');
   const seq = ++previewSeq;
   err.textContent = '';
-  if (!value) { box.style.display = 'none'; return; }
+  if (!value || format === 'nfctag') { box.style.display = 'none'; return; }
   try {
     await renderBarcode(document.getElementById('previewCanvas'), { value, format });
     if (seq !== previewSeq) return; // a newer keystroke already re-rendered
@@ -416,8 +424,10 @@ document.getElementById('editSave').onclick = async () => {
   const format = document.getElementById('fFormat').value;
   if (!name) { alert('Give the card a name.'); return; }
   if (!value) { alert('Enter or scan the barcode value.'); return; }
-  try { await renderBarcode(document.createElement('canvas'), { value, format }); }
-  catch { alert('That value can’t be encoded as ' + labelFor(format) + '. Pick a different type.'); return; }
+  if (format !== 'nfctag') {
+    try { await renderBarcode(document.createElement('canvas'), { value, format }); }
+    catch { alert('That value can’t be encoded as ' + labelFor(format) + '. Pick a different type.'); return; }
+  }
   const notes = document.getElementById('fNotes').value.trim();
   if (editingId) {
     const c = cards.find(c => c.id === editingId);

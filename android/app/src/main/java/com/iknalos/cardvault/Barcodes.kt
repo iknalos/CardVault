@@ -9,6 +9,9 @@ import com.google.zxing.MultiFormatWriter
 /** Maps between bwip-js bcids (the web app's format identifiers) and ZXing formats. */
 object Barcodes {
 
+    /** Pseudo-format for NFC tap cards: value holds the tag UID, nothing is rendered. */
+    const val NFC_FORMAT = "nfctag"
+
     // Insertion order = order shown in the barcode-type dropdown
     val FORMAT_LABELS = linkedMapOf(
         "qrcode" to "QR Code",
@@ -47,7 +50,8 @@ object Barcodes {
     val bcids: List<String> get() = FORMAT_LABELS.keys.toList()
     val labels: List<String> get() = FORMAT_LABELS.values.toList()
 
-    fun labelFor(bcid: String): String = FORMAT_LABELS[bcid] ?: bcid
+    fun labelFor(bcid: String): String =
+        if (bcid == NFC_FORMAT) "NFC tap card" else FORMAT_LABELS[bcid] ?: bcid
 
     /** ZXing scan-result format name (e.g. "CODE_128") -> bcid; defaults to code128. */
     fun bcidFromZxingName(name: String?): String =

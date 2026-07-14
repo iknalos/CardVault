@@ -1,7 +1,10 @@
 package com.iknalos.cardvault
 
+import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.Color
+import android.nfc.NfcAdapter
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -111,6 +114,22 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refresh()
+        // Route NFC taps to TapActivity while we're in the foreground, so the
+        // system never shows an app-picker over CardVault.
+        NfcAdapter.getDefaultAdapter(this)?.let { adapter ->
+            val flags = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
+            val pi = PendingIntent.getActivity(
+                this, 0,
+                Intent(this, TapActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                flags
+            )
+            try { adapter.enableForegroundDispatch(this, pi, null, null) } catch (e: Exception) {}
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        try { NfcAdapter.getDefaultAdapter(this)?.disableForegroundDispatch(this) } catch (e: Exception) {}
     }
 
     private fun refresh() {

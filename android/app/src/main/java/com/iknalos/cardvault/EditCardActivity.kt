@@ -22,6 +22,8 @@ class EditCardActivity : AppCompatActivity() {
     private lateinit var cards: MutableList<Card>
     private var editing: Card? = null
     private var selectedColor = CardStore.COLORS[0]
+    private var isNfc = false
+    private var nfcUid = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,18 +41,37 @@ class EditCardActivity : AppCompatActivity() {
 
         val card = editing
         if (card != null) {
-            findViewById<TextView>(R.id.editTitle).text = "Edit card"
+            isNfc = card.format == Barcodes.NFC_FORMAT
+            nfcUid = if (isNfc) card.value else ""
+            findViewById<TextView>(R.id.editTitle).text = if (isNfc) "Edit tap card" else "Edit card"
             nameField.setText(card.name)
             valueField.setText(card.value)
             notesField.setText(card.notes)
             selectedColor = card.color
-            formatSpinner.setSelection(Barcodes.bcids.indexOf(card.format).coerceAtLeast(0))
+            if (!isNfc) formatSpinner.setSelection(Barcodes.bcids.indexOf(card.format).coerceAtLeast(0))
             findViewById<View>(R.id.deleteBtn).visibility = View.VISIBLE
         } else {
-            valueField.setText(intent.getStringExtra("prefill_value") ?: "")
             val prefillFormat = intent.getStringExtra("prefill_format") ?: "code128"
-            formatSpinner.setSelection(Barcodes.bcids.indexOf(prefillFormat).coerceAtLeast(0))
+            isNfc = prefillFormat == Barcodes.NFC_FORMAT
+            nfcUid = if (isNfc) (intent.getStringExtra("prefill_value") ?: "") else ""
+            valueField.setText(intent.getStringExtra("prefill_value") ?: "")
+            if (!isNfc) formatSpinner.setSelection(Barcodes.bcids.indexOf(prefillFormat).coerceAtLeast(0))
             selectedColor = CardStore.COLORS[cards.size % CardStore.COLORS.size]
+            if (isNfc) {
+                findViewById<TextView>(R.id.editTitle).text = "Name this card"
+                nameField.hint = "e.g. Bus pass, Pill bottle"
+            }
+        }
+
+        if (isNfc) {
+            // Tap cards keep their tag UID; only name, notes and color are editable.
+            findViewById<View>(R.id.labelValue).visibility = View.GONE
+            findViewById<View>(R.id.fValue).visibility = View.GONE
+            findViewById<View>(R.id.labelFormat).visibility = View.GONE
+            formatSpinner.visibility = View.GONE
+            val info = findViewById<TextView>(R.id.nfcInfo)
+            info.visibility = View.VISIBLE
+            info.text = "NFC card detected ✓\nTag ID: $nfcUid\n\nFrom now on, tapping this card on the phone will show and speak whatever name you give it."
         }
 
         buildColorRow()
@@ -75,6 +96,7 @@ class EditCardActivity : AppCompatActivity() {
         Barcodes.bcids[findViewById<Spinner>(R.id.fFormat).selectedItemPosition]
 
     private fun updatePreview() {
+        if (isNfc) return
         val value = findViewById<EditText>(R.id.fValue).text.toString().trim()
         val image = findViewById<ImageView>(R.id.previewImage)
         val err = findViewById<TextView>(R.id.previewErr)
@@ -113,15 +135,17 @@ class EditCardActivity : AppCompatActivity() {
 
     private fun saveCard() {
         val name = findViewById<EditText>(R.id.fName).text.toString().trim()
-        val value = findViewById<EditText>(R.id.fValue).text.toString().trim()
+        val value = if (isNfc) nfcUid else findViewById<EditText>(R.id.fValue).text.toString().trim()
         val notes = findViewById<EditText>(R.id.fNotes).text.toString().trim()
-        val format = currentBcid()
+        val format = if (isNfc) Barcodes.NFC_FORMAT else currentBcid()
 
         if (name.isEmpty()) { Toast.makeText(this, "Give the card a name", Toast.LENGTH_SHORT).show(); return }
         if (value.isEmpty()) { Toast.makeText(this, "Enter or scan the barcode value", Toast.LENGTH_SHORT).show(); return }
-        try { Barcodes.render(value, format) } catch (e: Exception) {
-            Toast.makeText(this, "That value can't be encoded as ${Barcodes.labelFor(format)}", Toast.LENGTH_LONG).show()
-            return
+        if (!isNfc) {
+            try { Barcodes.render(value, format) } catch (e: Exception) {
+                Toast.makeText(this, "That value can't be encoded as ${Barcodes.labelFor(format)}", Toast.LENGTH_LONG).show()
+                return
+            }
         }
 
         val card = editing
